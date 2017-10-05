@@ -11,6 +11,7 @@ use std::process::exit;
 #[derive(Deserialize, Clone, Debug)]
 struct Team {
     name: String,
+    slug: String,
     id: i32,
 }
 
@@ -23,7 +24,7 @@ struct Repository {
 
 const PREFIX: &'static str = "s_";
 const ORG_NAME: &'static str = "rust-gjk";
-const TEAM_NAME: &'static str = "rok-2017-2018";
+const TEAM_NAME: &'static str = "rok-2017-2018"; //actually a slug
 const AUTH_TOKEN: &'static str = "lol nope";
 
 fn main() {
@@ -37,8 +38,8 @@ fn main() {
 
     let id = match team {
         Ok(t) => {
-            match t.iter().find(|ref x| x.name == TEAM_NAME.to_string()) {
-                Some(ref n) => n.id,
+            match t.iter().find(|x| x.slug == TEAM_NAME) {
+                Some(n) => n.id,
                 None => {
                     println!("err: team not found");
                     exit(-1)
@@ -65,7 +66,7 @@ fn main() {
         Ok(t) => t,
         Err(e) => {
             println!("err: {}", e);
-            exit(-1);
+            exit(-1)
         }
     };
 
@@ -81,13 +82,13 @@ fn main() {
         Ok(t) => t,
         Err(e) => {
             println!("err: {}", e);
-            exit(-1);
+            exit(-1)
         }
     };
 
     for repo in repos
             .iter()
-            .filter(|x| x.name.starts_with(PREFIX) && !moved_repos.contains(&x)) {
+            .filter(|x| x.name.starts_with(PREFIX) && !moved_repos.contains(x)) {
 
         println!("moving {}", &repo.name);
         let res = Client::new()
