@@ -1,4 +1,3 @@
-extern crate lettre;
 extern crate reqwest;
 extern crate serde_json;
 #[macro_use]
@@ -6,12 +5,9 @@ extern crate serde_derive;
 
 use reqwest::Client;
 use reqwest::header::{Accept, qitem};
-use lettre::email::EmailBuilder;
-use lettre::transport::EmailTransport;
-use lettre::transport::smtp::SmtpTransportBuilder;
 
-use std::time::Instant;
-use std::process::exit;
+use std::io::Write;
+use std::process::{exit, Command, Stdio};
 
 #[derive(Deserialize, Clone, Debug)]
 struct Team {
@@ -29,10 +25,15 @@ struct Repository {
     id: i32,
 }
 
+#[derive(Deserialize)]
+struct Topics {
+	names: Vec<String>
+}
+
 const PREFIX: &'static str = "s_";
 const ORG_NAME: &'static str = "rust-gjk";
 const TEAM_NAME: &'static str = "rok-2017-2018"; //actually slug of the team
-const AUTH_TOKEN: &'static str = "lol nope";
+const AUTH_TOKEN: &'static str = include!("auth_token");
 
 fn main() {
     let team = Client::new()
@@ -54,7 +55,7 @@ fn main() {
             }
         }
         Err(e) => {
-            println!("err: {}", e);
+            println!("{} err: {}", line!(), e);
             exit(-1)
         }
     };
@@ -72,7 +73,7 @@ fn main() {
               .json::<Vec<Repository>>() {
         Ok(t) => t,
         Err(e) => {
-            println!("err: {}", e);
+            println!("{} err: {}", line!(), e);
             exit(-1)
         }
     };
@@ -88,7 +89,7 @@ fn main() {
               .json::<Vec<Repository>>() {
         Ok(t) => t,
         Err(e) => {
-            println!("err: {}", e);
+            println!("{} err: {}", line!(), e);
             exit(-1)
         }
     };
@@ -110,7 +111,7 @@ fn main() {
             .send();
 
         if let Err(e) = res {
-            println!("err: {}", e);
+            println!("{} err: {}", line!(), e);
         }
     }
 
@@ -124,53 +125,53 @@ fn main() {
     			          &repo.name
     			))
     		.basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
-    		.header(Accept(vec![qitem("application/vnd.github.v3+json".parse().expect("potato"))]))
+    		.header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
     		.send()
     		.expect("why no topic")
-    		.json::<Vec<String>>() {
+    		.json::<Topics>() {
     		Ok(t) => t,
     		Err(e) => {
-    			println!("err: {}", e);
+    			println!("{} err: {}", line!(), e);
     			exit(-1)
     		}
     	};
 
+    	let topics = topics.names;
+
     	if topics.contains(&"r".to_string())
     	&& !topics.contains(&"n".to_string()) {
+    		println!("handing in: {}", &repo.name);
+
     		let res = Client::new()
 	            .put(&format!("https://api.github.com/repos/{}/{}/topics",
 	                          ORG_NAME,
 	                          &repo.name))
 	            .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
-	            .header(Accept(vec![qitem("application/vnd.github.v3+json".parse().expect("potato"))]))
-	            .body("{ [\"o\"] }")
+	            .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
+	            .body("{ \"names\": [\"o\"] }")
 	            .send();
 
 	        if let Err(e) = res {
-	            println!("err: {}", e);
+	            println!("{} err: {}", line!(), e);
+	            exit(-1)
 	        }
 
-	        let email = EmailBuilder::new()
-	            .to(("luk.hozda@gmail.com", "Lukáš Hozda"))
-	            .from("rust@magnusi.tech")
-	            .subject(&format!("Úkol odevzdán: {}", &repo.name))
-	            .text(&format!("Repozitář byl právě označen jako odevzdaný.
+	        let msg = &format!(
+	        	"Subject: Úkol odevzdán: {}\
+	         \n\nRepozitář byl právě označen jako odevzdaný.\
+	           \nURL:{}\n",
+	    		&repo.name, &repo.html_url
+	        );
+	        let p = Command::new("ssmtp")
+	        	.arg("luk.hozda@gmail.com")
+	        	.stdin(Stdio::piped())
+	        	.spawn()
+	        	.expect("why no ssmtp");
 
-	            	   URL: {}
-	            	   Název: {}
-	            	   Čas: {:?}
-
-	            	   ______
-	            	   gjkbot
-	            ", &repo.html_url, &repo.name, Instant::now()))
-	            .build().unwrap();
-
-	        let mut mailer = SmtpTransportBuilder::localhost().unwrap().build();
-			if let Err(e) = mailer.send(email) {
-				println!("err: {}", e);
-			}
+	        if let Err(e) = p.stdin.unwrap().write_all(msg.as_bytes()) {
+	        	println!("{} err: {}", line!(), e);
+	        	exit(-1)
+	        }
     	}
-
-
     }
 }
