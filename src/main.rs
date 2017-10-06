@@ -60,8 +60,6 @@ fn main() {
         }
     };
 
-    println!("id: {}", id);
-
     let moved_repos = match Client::new()
               .get(&format!("https://api.github.com/teams/{}/repos", id))
               .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
