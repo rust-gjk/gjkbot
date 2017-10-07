@@ -1,5 +1,4 @@
 extern crate reqwest;
-extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
@@ -9,14 +8,14 @@ use reqwest::header::{Accept, qitem};
 use std::io::Write;
 use std::process::{exit, Command, Stdio};
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize)]
 struct Team {
     name: String,
     slug: String,
     id: i32,
 }
 
-#[derive(Deserialize, Clone, Debug, PartialEq)]
+#[derive(Deserialize, PartialEq)]
 struct Repository {
     name: String,
     description: Option<String>,
