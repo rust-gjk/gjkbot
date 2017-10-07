@@ -30,10 +30,21 @@ struct Topics {
 	names: Vec<String>
 }
 
-const PREFIX: &'static str = "s_";
+#[derive(Serialize)]
+struct Issue {
+	title: String
+}
+
 const ORG_NAME: &'static str = "rust-gjk";
 const TEAM_NAME: &'static str = "rok-2017-2018"; //actually slug of the team
 const AUTH_TOKEN: &'static str = include!("auth_token");
+const WHITE_LIST: [&'static str; 5] = [
+	"znamkovani",
+	"gjkbot",
+	"rustgrade",
+	"Materialy",
+	"Halp",
+];
 
 fn main() {
     let team = Client::new()
@@ -95,7 +106,7 @@ fn main() {
     // move repositories to team
     for repo in repos
             .iter()
-            .filter(|x| x.name.starts_with(PREFIX) && !moved_repos.contains(x)) {
+            .filter(|x| !(WHITE_LIST.contains(&x.name.as_ref()) && moved_repos.contains(x))) {
 
         println!("moving {}", &repo.name);
         let res = Client::new()
@@ -170,6 +181,16 @@ fn main() {
 	        	println!("{} err: {}", line!(), e);
 	        	exit(-1)
 	        }
+
+	        Client::new()
+	            .post(&format!("https://api.github.com/repos/{}/{}/issues",
+	                          ORG_NAME,
+	                          &repo.name))
+	            .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
+	            .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
+	            .json(&Issue { title: "odevzdáno".to_string() })
+	            .send()
+	            .expect("why no issue");
     	}
     }
 }
