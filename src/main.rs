@@ -100,7 +100,7 @@ fn main() {
     for repo in
         repos
             .iter()
-            .filter(|x| WHITE_LIST.contains(&x.name.as_ref()) && !moved_repos.contains(x)) {
+            .filter(|x| !WHITE_LIST.contains(&x.name.as_ref()) && !moved_repos.contains(x)) {
 
         println!("moving {}", &repo.name);
         let res = Client::new()
