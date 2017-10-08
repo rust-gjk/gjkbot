@@ -37,7 +37,7 @@ struct Issue {
 const ORG_NAME: &'static str = "rust-gjk";
 const TEAM_NAME: &'static str = "rok-2017-2018"; //actually slug of the team
 const AUTH_TOKEN: &'static str = include!("auth_token");
-const WHITE_LIST: [&'static str; 5] = ["znamkovani", "gjkbot", "rustgrade", "Materialy", "Halp"];
+const WHITE_LIST: [&'static str; 5] = ["znamkovani", "gjkbot", "rustgrade", "Materialy", "Halp", "snapshot"];
 
 fn main() {
     let team = Client::new()
