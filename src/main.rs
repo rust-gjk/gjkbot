@@ -26,24 +26,18 @@ struct Repository {
 
 #[derive(Deserialize)]
 struct Topics {
-	names: Vec<String>
+    names: Vec<String>,
 }
 
 #[derive(Serialize)]
 struct Issue {
-	title: String
+    title: String,
 }
 
 const ORG_NAME: &'static str = "rust-gjk";
 const TEAM_NAME: &'static str = "rok-2017-2018"; //actually slug of the team
 const AUTH_TOKEN: &'static str = include!("auth_token");
-const WHITE_LIST: [&'static str; 5] = [
-	"znamkovani",
-	"gjkbot",
-	"rustgrade",
-	"Materialy",
-	"Halp",
-];
+const WHITE_LIST: [&'static str; 5] = ["znamkovani", "gjkbot", "rustgrade", "Materialy", "Halp"];
 
 fn main() {
     let team = Client::new()
@@ -103,7 +97,8 @@ fn main() {
     };
 
     // move repositories to team
-    for repo in repos
+    for repo in
+        repos
             .iter()
             .filter(|x| !(WHITE_LIST.contains(&x.name.as_ref()) && moved_repos.contains(x))) {
 
@@ -127,69 +122,72 @@ fn main() {
     // 'n' topic makes the repo ignored and topics et al. unchanged
     // 'o' means handed in and recognized by the bot
     for repo in moved_repos {
-    	let topics = match Client::new()
-    		.get(&format!("https://api.github.com/repos/{}/{}/topics",
-    			          ORG_NAME,
-    			          &repo.name
-    			))
-    		.basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
-    		.header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
-    		.send()
-    		.expect("why no topic")
-    		.json::<Topics>() {
-    		Ok(t) => t,
-    		Err(e) => {
-    			println!("{} err: {}", line!(), e);
-    			exit(-1)
-    		}
-    	};
+        let topics = match Client::new()
+                  .get(&format!("https://api.github.com/repos/{}/{}/topics",
+                                ORG_NAME,
+                                &repo.name))
+                  .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
+                  .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json"
+                                                .parse()
+                                                .expect("potato"))]))
+                  .send()
+                  .expect("why no topic")
+                  .json::<Topics>() {
+            Ok(t) => t,
+            Err(e) => {
+                println!("{} err: {}", line!(), e);
+                exit(-1)
+            }
+        };
 
-    	let topics = topics.names;
+        let topics = topics.names;
 
-    	if topics.contains(&"r".to_string())
-    	&& !topics.contains(&"n".to_string()) {
-    		println!("handing in: {}", &repo.name);
+        if topics.contains(&"r".to_string()) && !topics.contains(&"n".to_string()) {
+            println!("handing in: {}", &repo.name);
 
-    		let res = Client::new()
-	            .put(&format!("https://api.github.com/repos/{}/{}/topics",
-	                          ORG_NAME,
-	                          &repo.name))
-	            .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
-	            .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
-	            .body("{ \"names\": [\"o\"] }")
-	            .send();
+            let res = Client::new()
+                .put(&format!("https://api.github.com/repos/{}/{}/topics",
+                              ORG_NAME,
+                              &repo.name))
+                .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
+                .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json"
+                                              .parse()
+                                              .expect("potato"))]))
+                .body("{ \"names\": [\"o\"] }")
+                .send();
 
-	        if let Err(e) = res {
-	            println!("{} err: {}", line!(), e);
-	            exit(-1)
-	        }
+            if let Err(e) = res {
+                println!("{} err: {}", line!(), e);
+                exit(-1)
+            }
 
-	        let msg = &format!(
-	        	"Subject: Úkol odevzdán: {}\
+            let msg = &format!("Subject: Úkol odevzdán: {}\
 	         \n\nRepozitář byl právě označen jako odevzdaný.\
 	           \nURL:{}\n",
-	    		&repo.name, &repo.html_url
-	        );
-	        let p = Command::new("ssmtp")
-	        	.arg("luk.hozda@gmail.com")
-	        	.stdin(Stdio::piped())
-	        	.spawn()
-	        	.expect("why no ssmtp");
+                               &repo.name,
+                               &repo.html_url);
+            let p = Command::new("ssmtp")
+                .arg("luk.hozda@gmail.com")
+                .stdin(Stdio::piped())
+                .spawn()
+                .expect("why no ssmtp");
 
-	        if let Err(e) = p.stdin.unwrap().write_all(msg.as_bytes()) {
-	        	println!("{} err: {}", line!(), e);
-	        	exit(-1)
-	        }
+            if let Err(e) = p.stdin.unwrap().write_all(msg.as_bytes()) {
+                println!("{} err: {}", line!(), e);
+                exit(-1)
+            }
 
-	        Client::new()
-	            .post(&format!("https://api.github.com/repos/{}/{}/issues",
-	                          ORG_NAME,
-	                          &repo.name))
-	            .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
-	            .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json".parse().expect("potato"))]))
-	            .json(&Issue { title: "odevzdáno".to_string() })
-	            .send()
-	            .expect("why no issue");
-    	}
+            Client::new()
+                .post(&format!("https://api.github.com/repos/{}/{}/issues",
+                               ORG_NAME,
+                               &repo.name))
+                .basic_auth(AUTH_TOKEN, Some("x-oauth-basic"))
+                .header(Accept(vec![qitem("application/vnd.github.mercy-preview+json"
+                                              .parse()
+                                              .expect("potato"))]))
+                .json(&Issue { title: "odevzdáno".to_string() })
+                .send()
+                .expect("why no issue");
+        }
     }
 }
